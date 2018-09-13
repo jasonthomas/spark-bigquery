@@ -46,6 +46,11 @@ object SchemaConverters {
       case _ => if (field.nullable) "NULLABLE" else "REQUIRED"
     }
   }
+  private def customKeyValueStructFields(mapType: MapType): (StructField, StructField) = {
+    val keyField = StructField(KEY_FIELD_NAME, mapType.keyType, false)
+    val valueField = StructField(VALUE_FIELD_NAME, mapType.valueType, mapType.valueContainsNull)
+    (keyField, valueField)
+  }
   private def getTypeName(dataType: DataType) = {
     dataType match {
       case ByteType | ShortType | IntegerType | LongType => "INTEGER"
@@ -73,7 +78,11 @@ object SchemaConverters {
             typeToJson(field, other)
         }
       case mapType: MapType =>
-        throw new IllegalArgumentException(s"Unsupported type: ${dataType}")
+        val (keyField, valueField) = customKeyValueStructFields(mapType)
+        val key = fieldToJson(keyField)
+        val value = fieldToJosn(valueField)
+        ("type" -> getTypeName(dataType)) ~
+          ("fields" -> (key, value))
       case other =>
         ("type" -> getTypeName(dataType))
     }
